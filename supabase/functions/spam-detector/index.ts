@@ -38,40 +38,90 @@ serve(async (req) => {
 
     console.log(`Processing ${action} request for text of length ${text.length}`);
 
-    if (action === "classify") {
-  try {
-    const response = await fetch("http://127.0.0.1:5000/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
+     if (action === "classify") {
+      try {
+        const response = await fetch("http://127.0.0.1:5000/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Flask API error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "Model service error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Flask API error:", response.status, errorText);
+          return new Response(
+            JSON.stringify({ error: "Model service error" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const result = await response.json();
+        console.log("Flask API raw response:", JSON.stringify(result));
+
+        // Try to normalize confidence from several possible shapes
+        let confidenceValue: number | null = null;
+
+        if (result.confidence != null) {
+          const c = result.confidence;
+          if (typeof c === "number") {
+            confidenceValue = toNumber(c);
+            if (confidenceValue > 1.0) confidenceValue = confidenceValue / 100.0;
+            confidenceValue = Math.min(Math.max(confidenceValue, 0), 1);
+          } else if (Array.isArray(c)) {
+            confidenceValue = normalizeConfidenceFromArray(c);
+          } else if (typeof c === "object") {
+            confidenceValue = normalizeConfidenceFromMap(c as Record<string, unknown>);
+          }
+        } else if (result.probs || result.probabilities) {
+          const key = result.probs ? "probs" : "probabilities";
+          const p = result[key];
+          if (Array.isArray(p)) {
+            confidenceValue = normalizeConfidenceFromArray(p);
+          } else if (typeof p === "object") {
+            confidenceValue = normalizeConfidenceFromMap(p as Record<string, unknown>);
+          }
+        }
+
+        // If we still don't have a confidence, try to infer from label scores or fallback
+        if (confidenceValue == null) {
+          // If there's a map of label->score under 'scores' or 'label_scores', use it
+          if (result.scores && typeof result.scores === "object") {
+            confidenceValue = normalizeConfidenceFromMap(result.scores);
+          } else if (result.label_scores && typeof result.label_scores === "object") {
+            confidenceValue = normalizeConfidenceFromMap(result.label_scores);
+          } else {
+            console.warn("No recognizable confidence field in model response; defaulting to 0");
+            confidenceValue = 0;
+          }
+        }
+
+        const uncertainty = 1 - confidenceValue;
+        const confidencePercent = `${(confidenceValue * 100).toFixed(2)}%`;
+        const uncertaintyPercent = `${(uncertainty * 100).toFixed(2)}%`;
+
+        const classificationLabel =
+          result.classification ?? result.label ?? result.predicted_label ?? null;
+
+        return new Response(
+          JSON.stringify({
+            classification: classificationLabel,
+            confidence: confidenceValue,
+            confidence_percent: confidencePercent,
+            uncertainty,
+            uncertainty_percent: uncertaintyPercent,
+            raw: result // include raw model response for debugging/visibility
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (err) {
+        console.error("Error contacting Flask API:", err);
+        return new Response(
+          JSON.stringify({ error: "Backend connection failed" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    const result = await response.json();
-
-    return new Response(
-      JSON.stringify({
-        classification: result.classification,
-        confidence: result.confidence,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    console.error("Error contacting Flask API:", err);
-    return new Response(
-      JSON.stringify({ error: "Backend connection failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-}
 
     } else {
       // Explanation request
