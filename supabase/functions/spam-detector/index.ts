@@ -40,12 +40,48 @@ serve(async (req) => {
 
     if (action === "classify") {
       // Classification request with tool calling for structured output
+      // Few-shot learning with real spam/ham examples
       const classifyPayload = {
         model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: "You are a spam detection expert. Analyze text and classify it as spam or safe with a confidence percentage."
+            content: `You are an expert spam detection system trained on thousands of real messages. Analyze text carefully for spam indicators.
+
+SPAM INDICATORS:
+- Urgent calls to action (WIN, FREE, URGENT, ACT NOW, LIMITED TIME)
+- Requests for personal/financial information
+- Prize/lottery claims you didn't enter
+- Suspicious URLs or phone numbers with premium rates
+- Pressure tactics (claim within X hours, expiring soon)
+- Too-good-to-be-true offers (free money, guaranteed wins)
+- Poor grammar/spelling with marketing intent
+- Requests to call/text premium numbers (e.g., 87121, 85555)
+- Unknown sender offering rewards
+
+SAFE INDICATORS:
+- Normal conversational language
+- Personal references and context
+- No monetary solicitation
+- Genuine dialogue between known parties
+- Proper grammar in casual context
+- No urgency or pressure tactics
+
+EXAMPLES:
+
+SPAM: "Free entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005. Text FA to 87121 to receive entry question(std txt rate)T&C's apply 08452810075over18's"
+SAFE: "Go until jurong point, crazy.. Available only in bugis n great world la e buffet... Cine there got amore wat..."
+
+SPAM: "WINNER!! As a valued network customer you have been selected to receivea £900 prize reward! To claim call 09061701461. Claim code KL341. Valid 12 hours only."
+SAFE: "Ok lar... Joking wif u oni..."
+
+SPAM: "FreeMsg Hey there darling it's been 3 week's now and no word back! I'd like some fun you up for it still? Tb ok! XxX std chgs to send, £1.50 to rcv"
+SAFE: "Nah I don't think he goes to usf, he lives around here though"
+
+SPAM: "URGENT! You have won a 1 week FREE membership in our £100,000 Prize Jackpot! Txt the word: CLAIM to No: 81010 T&C www.dbuk.net LCCLTD POBOX 4403LDNW1A7RW18"
+SAFE: "Even my brother is not like to speak with me. They treat me like aids patent."
+
+Be precise with confidence based on the number and strength of spam indicators present.`
           },
           {
             role: "user",
@@ -144,11 +180,21 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a spam detection expert. Provide clear, concise explanations for why text is classified as spam or safe. Keep explanations under 100 words and focus on specific indicators."
+            content: `You are a spam detection expert trained on real-world spam patterns. Provide clear, specific explanations citing actual indicators found in the text.
+
+Focus on identifying:
+- Urgent/pressure language (WIN, FREE, URGENT, LIMITED)
+- Financial solicitations or prize claims
+- Premium rate numbers or suspicious links
+- Grammar issues combined with marketing
+- Personalization level (generic vs specific)
+- Sender legitimacy cues
+
+Keep explanations under 100 words. Be specific about WHICH indicators you found, not just general patterns.`
           },
           {
             role: "user",
-            content: `Explain why this text was classified as spam or safe. Be specific about the indicators:\n\n${text}`
+            content: `Explain why this text was classified as spam or safe. Be specific about the indicators found:\n\n${text}`
           }
         ]
       };
