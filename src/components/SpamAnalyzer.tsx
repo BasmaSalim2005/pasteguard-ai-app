@@ -120,7 +120,7 @@ export const SpamAnalyzer = () => {
             <Button
               onClick={handleAnalyze}
               disabled={isAnalyzing || !text.trim()}
-              className="w-full bg-gradient-green hover:opacity-90 transition-all shadow-md"
+              className="w-full bg-gradient-primary hover:opacity-90 transition-all shadow-md"
               size="lg"
             >
               {isAnalyzing ? (
