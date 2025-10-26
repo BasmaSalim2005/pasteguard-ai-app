@@ -1,0 +1,4 @@
+project_id = "solfewjijhlzyvhqotwr"
+
+[functions.spam-detector]
+verify_jwt = false
