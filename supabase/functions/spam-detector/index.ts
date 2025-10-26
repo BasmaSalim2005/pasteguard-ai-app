@@ -39,7 +39,7 @@ serve(async (req) => {
     console.log(`Processing ${action} request for text of length ${text.length}`);
 
      if (action === "classify") {
-  try {
+     try {
     const response = await fetch("http://127.0.0.1:5000/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,9 +71,6 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-}
-
-
 
     } else {
       // Explanation request
