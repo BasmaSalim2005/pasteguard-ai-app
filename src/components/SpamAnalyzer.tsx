@@ -169,7 +169,7 @@ export const SpamAnalyzer = () => {
                       {isSpam ? "SPAM DETECTED" : "SAFE"}
                     </Badge>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Confidence: {confidence.toFixed(1)}%
+                      Confidence: {confidence}%
                     </p>
                   </div>
                 </div>
